@@ -662,7 +662,7 @@ export const BillingSystem: React.FC = () => {
 
 
           </div>
-          <div className="bg-white rounded-lg shadow-md p-6 mt-3 sticky h-fit  z-20">
+          <div className="bg-white rounded-lg shadow-md p-6 mt-3">
             <div className="flex items-center mb-4">
               <Users className="w-6 h-6 text-blue-500 mr-2" />
               <h2 className="text-xl font-semibold">Recent Customers</h2>
@@ -676,7 +676,7 @@ export const BillingSystem: React.FC = () => {
                   <div>
                     <p className="font-medium">{customer.customer.customer_name}</p>
                     <p className="text-sm text-gray-500">
-                      {format(customer.date, 'MMM dd, yyyy')}
+                      {format(new Date(customer.date), 'MMM dd, yyyy')}
                     </p>
                   </div>
                   <div className="flex items-center text-green-500">

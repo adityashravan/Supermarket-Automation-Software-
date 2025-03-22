@@ -20,22 +20,39 @@ import {
 // Define types for better type safety
 type TimeRange = "daily" | "weekly" | "monthly" | "yearly";
 interface SaleItem {
-  product?: { _id: string; name: string };
-  product_qty?: number;
+  product_code: string;
+  product_name: string;
+  sale_price: number;
+  product_qty: number;
+  discount: number;
+  total: number;
 }
 interface Sale {
   date: string;
-  total_amount?: number;
-  totalItemsSold?: number;
-  items?: SaleItem[];
+  total_amount: number;
+  items: SaleItem[];
+  customer: {
+    customer_name: string;
+    customer_phone: string;
+    cust_no: string;
+  };
 }
 interface Product {
-  _id: string;
-  name: string;
+  product_id: number;
+  productName: string;
+  price: number;
+  category: number;
+  upc: string;
+  imageUrl: string;
+  stockQuantity: number;
+  product_url: string;
 }
 interface Productcat {
-  _id: string;
+  cat_id: number;
   name: string;
+  abbreviation: string;
+  category_url: string;
+  createdAt: Date;
 }
 // interface Customer {
 //   _id: string;
@@ -50,7 +67,7 @@ export const Statistics: React.FC = () => {
   const [salesData, setSalesData] = useState<Sale[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productscat, setProductsCat] = useState<Productcat[]>([]);
-  const [customerphone, setCustomer] = useState([]);
+  const [customerphone, setCustomer] = useState<string[]>([]);
   const [todayStats, setTodayStats] = useState({
     totalRevenue: 0,
     totalTransactions: 0,
@@ -61,32 +78,58 @@ export const Statistics: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [salesRes, productsRes,productCat, todayStatsRes] = await Promise.all([
+        const [salesRes, productsRes, productCat, todayStatsRes] = await Promise.all([
           axios.get("http://localhost:5000/api/sales/"),
           axios.get("http://localhost:5000/api/getProducts/"),
           axios.get("http://localhost:5000/api/getProductsCategory/"),
           axios.get("http://localhost:5000/api/today-stats/"),
-          // axios.get("http://localhost:5000/api/allcustomer/"),
         ]);
 
         setSalesData(salesRes.data || []);
         setProducts(productsRes.data || []);
         setProductsCat(productCat.data || []);
         setTodayStats(todayStatsRes.data || {});
-        // setCustomer(customer.data || {});
+        
+        // Update customer phone numbers
+        const phoneNumbers = salesRes.data
+          .filter((sale: Sale) => sale.customer?.customer_phone)
+          .map((sale: Sale) => sale.customer!.customer_phone);
+        setCustomer(phoneNumbers);
       } catch (error) {
         console.error("Error fetching statistics:", error);
       }
-      
     };
-    let parr=[]
-    salesData.map((e,i)=>{
-      
-      parr.push(e.customer.customer_phone)
-    })
-    setCustomer(parr)
-    console.log("customerphone",customerphone)
+
     fetchStats();
+  }, []);
+
+  // Set up WebSocket connection for real-time updates
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:5000');
+
+    ws.onmessage = (event) => {
+      const newSale = JSON.parse(event.data);
+      if (newSale.type === 'new_sale') {
+        // Update sales data
+        setSalesData(prev => [...prev, newSale.sale]);
+        
+        // Update today's stats
+        setTodayStats(prev => ({
+          totalRevenue: prev.totalRevenue + (newSale.sale.total_amount || 0),
+          totalTransactions: prev.totalTransactions + 1,
+          totalItemsSold: prev.totalItemsSold + (newSale.sale.totalItemsSold || 0),
+        }));
+
+        // Update customer phone numbers if new customer
+        if (newSale.sale.customer?.customer_phone) {
+          setCustomer(prev => [...prev, newSale.sale.customer.customer_phone]);
+        }
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   // Filter sales data based on selected time range
@@ -117,18 +160,30 @@ export const Statistics: React.FC = () => {
         return (
           sum +
           (sale.items?.reduce((itemSum, item) => {
-            return item.product?._id === product._id
+            return item.product_code === product.upc
               ? itemSum + (item.product_qty || 0)
               : itemSum;
           }, 0) || 0)
         );
       }, 0);
 
-      return { name: product.name, value: totalQuantity };
+      return { name: product.productName, value: totalQuantity };
     })
     .filter((product) => product.value > 0); // Remove products with zero sales
 
   const filteredData = getFilteredData();
+
+  // Calculate total items sold for each date
+  const itemsSoldData = filteredData.map(sale => ({
+    date: format(new Date(sale.date), 'dd MMM'),
+    totalItemsSold: sale.items?.reduce((sum, item) => sum + (item.product_qty || 0), 0) || 0
+  }));
+
+  // Calculate revenue for each date
+  const revenueData = filteredData.map(sale => ({
+    date: format(new Date(sale.date), 'dd MMM'),
+    total_amount: sale.total_amount || 0
+  }));
 
   return (
     <div className="space-y-8">
@@ -203,15 +258,13 @@ export const Statistics: React.FC = () => {
             {products.length}
           </p>
         </div>
-       
-        
       </div>
 
       {/* Revenue Trend Chart */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold mb-4">Revenue Trend</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={filteredData}>
+          <LineChart data={revenueData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
@@ -232,13 +285,9 @@ export const Statistics: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Items Sold</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={filteredData}>
+            <BarChart data={itemsSoldData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(date) => format(new Date(date), "dd MMM")} // Convert to human-readable date
-              />
-
+              <XAxis dataKey="date" />
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />

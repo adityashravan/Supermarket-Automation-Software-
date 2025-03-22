@@ -18,7 +18,11 @@ import { useStore } from "../store/useStore";
 
 const images = [
   "/uploads/login.jpg",
- 
+  "/src/login_images/carousel4.jpg",
+  "/src/login_images/carousel3.jpg",
+  "/src/login_images/carousel5.jpg",
+  "/src/login_images/carousel2.jpg",
+  "/src/login_images/carousel1.jpg",
 ];
 
 // 3D objects for the background

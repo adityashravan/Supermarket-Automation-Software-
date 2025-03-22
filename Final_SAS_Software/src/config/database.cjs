@@ -1,5 +1,7 @@
 const express = require("express");
 const multer = require("multer");
+const http = require('http');
+const WebSocket = require('ws');
 
 const slugify = require("slugify");
 const path = require("path");
@@ -20,6 +22,8 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
@@ -556,6 +560,15 @@ app.delete("/api/productdelete/:product_id", async (req, res) => {
   }
 });
 
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+  console.log('New WebSocket connection');
+  
+  ws.on('close', () => {
+    console.log('Client disconnected');
+  });
+});
+
 // Create Sales Record API
 app.post("/api/salesproduct/", async (req, res) => {
   try {
@@ -604,6 +617,18 @@ app.post("/api/salesproduct/", async (req, res) => {
         await product.save();
       }
     }
+
+    // Emit WebSocket event for new sale
+    const saleData = {
+      type: 'new_sale',
+      sale: newSale
+    };
+    
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(saleData));
+      }
+    });
 
     res
       .status(201)
@@ -724,6 +749,6 @@ app.get("/api/printbill/:bill_id", async (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
