@@ -504,8 +504,8 @@ export const BillingSystem: React.FC = () => {
                       </g>
                     </svg>
                     <p className="mt-4">
-                      N6/272, IRC Village <br />
-                      Jaydev Vihar, Bhubaneswar. 751015
+                      NIT Rourkela, Sector-2 <br />
+                      Rourkela, Odisha-769008
                     </p>
                     <p>
                       <b>GSTIN:</b> XXXXXXXXXX789
