@@ -1,0 +1,20 @@
+graph TD;
+    SAS["SAS System"]
+    
+    SAS --> Inventory["Inventory Management"]
+    SAS --> Transaction["Transaction Processing"]
+    SAS --> Billing["Billing System"]
+    SAS --> Statistics["Statistics & Reporting"]
+    
+    Inventory --> SearchItem["Search Item"]
+    Inventory --> UpdateItem["Update/Add Item"]
+    Inventory --> ProvideInventory["Provide Inventory Details"]
+    Inventory --> UpdatePrice["Update Price"]
+    
+    Transaction --> AddTransaction["Add Item to Transaction"]
+    Transaction --> DecreaseInventory["Decrease Inventory"]
+    
+    Billing --> GenerateBill["Generate Final Bill"]
+    Billing --> CalculateTotal["Calculate Total"]
+    
+    Statistics --> ProvideStats["Provide Statistics"]
